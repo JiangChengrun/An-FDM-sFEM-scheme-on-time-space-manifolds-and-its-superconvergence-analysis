@@ -1,0 +1,103 @@
+function runTSTorus
+%% RUNSPHERE Main program for Laplace-beltrami equation on sphere
+%
+%   Copyright (C) Hailong Guo, Chengrun Jiang
+%   01/04/2022
+
+%% Set path
+setpath;
+
+%% Initialize
+maxIt = 4;
+h1err = zeros(1,maxIt);
+l2err = zeros(1,maxIt);
+l0err = zeros(1,maxIt);
+h1rerr = zeros(1,maxIt);
+N = zeros(1,maxIt);
+h = zeros(1,maxIt);
+Nu = 20; %20
+Nv = 10; %10
+
+%% Prepare data structure
+surfacedata = TSTorus;
+pde = surfacedata;
+NT1= 40;
+
+%% Main loop
+for k=1:maxIt
+    % Generate mesh
+    %mesh = torusRegularMesh(Nu, Nv, 4, 1);
+    mesh = torusChevronMesh(Nu, Nv, 4, 1);
+    mesh.nt = NT1;
+    mesh.rm = 'PPPR';
+
+    
+    % Solve PDE
+    u = TSLaplace2(mesh,pde);
+    % Compute  error
+    h(k) = 1/(mesh.nt-1);
+    t = 0:h(k):1;
+    N(k) = size(mesh.node,1);
+    uI = zeros(mesh.nt*N(k),1);
+    for j = 1:mesh.nt
+        uI((j-1)*N(k)+1:j*N(k)) = pde.exactu(mesh.node, t(j));
+    end
+    l0err(k) = max(abs(u-uI));
+    [l2err(k), h1err(k), h1err_t(k), h1terr(k), h1rerr(k), h00terr(k), h00rerr(k)] = TSError(mesh, u, pde);
+    disp(l0err(k));
+    % Refine mesh
+    Nu = Nu*2;
+    Nv = Nv*2;
+    NT1 = NT1*2;
+    disp(k);
+end
+
+%% Plot Errorfigure(11)
+figure;
+loglog(N, l2err, 'r-s', 'MarkerSize', 8, 'LineWidth', 2); hold on;
+loglog(N, h1err, 'b-^', 'MarkerSize', 8, 'LineWidth', 2);
+loglog(N, h1terr, 'g-s', 'MarkerSize', 8, 'LineWidth', 2);
+loglog(N, h1rerr, 'm-^', 'MarkerSize', 8, 'LineWidth', 2);
+loglog(N, h00terr, 'c-s', 'MarkerSize', 8, 'LineWidth', 2);
+loglog(N, h00rerr, 'k-d', 'MarkerSize', 8, 'LineWidth', 2);
+legend({'$e$', '$De_2^{G}$', '$De_2^{T}$', '$De_2^{\mathcal{M}}$', '$De_{\infty}^T$', '$De_{\infty}^{\mathcal{M}}$'}, 'Interpreter', 'latex', 'Location', 'southwest');
+xlabel('Number of Vertices');
+ylabel('Error'); 
+% xlim([N(1)*0.9 N(end)*1.1]);
+% ylim([h1terr(end)*0.9 h1err(1)*1.1]);
+ xlim([N(1)*0.9 N(end)*1.1]);
+ ylim([h00terr(end)*0.8 h1err(1)*1.2]);
+
+% triangle([N(3),h1terr(3).*0.5],N(2),-1,'1','1',1.3);
+% triangle([N(3)*0.9,h1err(3).*1.5],N(4)*0.9,-0.5,'1','0.5',1.3);
+triangle([N(3),h00terr(3).*0.5],N(2),-1,'1','1',1.3);
+triangle([N(3)*0.5,h1err(3).*2.5],N(4)*0.5,-0.5,'1','0.5',1.3);
+
+N=N';
+l2err=l2err';
+h1err=h1err';
+h1terr=h1terr';
+h1rerr=h1rerr';
+h00terr=h00terr';
+h00rerr=h00rerr';
+h1err_t=h1err_t';
+
+order_l2err = [NaN; log2(l2err(1:end-1) ./ l2err(2:end))]; 
+order_h1err = [NaN; log2(h1err(1:end-1) ./ h1err(2:end))]; 
+order_h1err_t = [NaN; log2(h1err_t(1:end-1) ./ h1err_t(2:end))];
+order_h1terr = [NaN; log2(h1terr(1:end-1) ./ h1terr(2:end))]; 
+order_h1rerr = [NaN; log2(h1rerr(1:end-1) ./ h1rerr(2:end))]; 
+order_h00terr = [NaN; log2(h00terr(1:end-1) ./ h00terr(2:end))]; 
+order_h00rerr = [NaN; log2(h00rerr(1:end-1) ./ h00rerr(2:end))]; 
+
+error = table(N, l2err, order_l2err, h1err, order_h1err,h1err_t,order_h1err_t, h1terr, order_h1terr, h1rerr, order_h1rerr, h00terr, order_h00terr, h00rerr, order_h00rerr);
+writetable(error, 'C:/Users/13393/Desktop/Code/TS_original/results/TorusErrors3.xlsx')
+disp(error);
+% %% Create a table for error
+% N = N';
+% l2err = l2err';
+% h1err = h1err';
+% h1rerr = h1rerr';
+% h0err=h0err';
+% error = table(N,l2err,h1err, h1rerr,h0err);
+% disp(error)

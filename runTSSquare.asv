@@ -1,0 +1,180 @@
+function runTSSquare
+%% RUNSPHERE Main program for Laplace-beltrami equation on sphere
+%
+%   Copyright (C) Hailong Guo
+%   01/04/2022
+
+%% Set path
+setpath;
+
+%%%%%
+set(groot, 'DefaultAxesFontName', 'Times New Roman');
+set(groot, 'DefaultTextFontName', 'Times New Roman');
+
+%% Initialize
+maxIt = 4;
+h1err = zeros(1,maxIt);
+l2err = zeros(1,maxIt);
+l0err = zeros(1,maxIt);
+h1rerr = zeros(1,maxIt);
+h0rerr = zeros(1,maxIt);
+N = zeros(1,maxIt);
+h = zeros(1,maxIt);
+Nd = 10;
+nt = 20;
+testflag = 1;
+if testflag == 1
+    rm = 'PPPR';
+elseif testflag == 2
+    rm = 'SA';
+end
+
+%% Prepare data structure
+surfacedata = TSSquare;
+pde = surfacedata;
+
+
+
+%% Main loop
+for k=1:maxIt
+    % Generate mesh
+    %mesh = torusRegularMesh(Nu, Nv, 4, 1);
+    %mesh = regular(Nd);
+    mesh = chevron(Nd);
+    mesh.nt = nt;
+    mesh.rm = rm;
+    % Solve PDE
+    u = TSLaplace2(mesh,pde);
+    % Compute  error
+    h(k) = 1/(mesh.nt-1);
+    t = 0:h(k):1;
+    N(k) = size(mesh.node,1);
+    uI = zeros(mesh.nt*N(k),1);
+    for j = 1:mesh.nt
+        uI((j-1)*N(k)+1:j*N(k)) = pde.exactu(mesh.node, t(j));
+    end
+    l0err(k) = max(abs(u-uI));
+    [l2err(k), h1err(k), h1terr(k), h1rerr(k), h00terr(k), h00rerr(k)] = TSError(mesh, u, pde);
+    disp(l0err(k));
+    % Refine mesh
+    Nd = Nd*2;
+    nt = nt*2;
+    disp(k);
+end
+
+%% Plot Errorfigure(11)
+figure;
+loglog(N, l2err, 'r--s', 'MarkerSize', 8, 'LineWidth', 2); hold on;
+loglog(N, h1err, 'b--^', 'MarkerSize', 8, 'LineWidth', 2);
+loglog(N, h1terr, 'g--s', 'MarkerSize', 8, 'LineWidth', 2);
+loglog(N, h1rerr, 'm--^', 'MarkerSize', 8, 'LineWidth', 2);
+loglog(N, h00terr, 'c--s', 'MarkerSize', 8, 'LineWidth', 2);
+loglog(N, h00rerr, 'k--d', 'MarkerSize', 8, 'LineWidth', 2);
+legend('l2err','h1err','h1terr','h1rerr','h00terr','h00rerr');
+xlabel('Number of Dof');
+ylabel('Error'); 
+
+% 
+% % 添加辅助线显示斜率
+% plot(k, k.^-2, 'r--', 'LineWidth', 1.5); % 斜率为2的辅助线
+% plot(k, k.^-3, 'b--', 'LineWidth', 1.5); % 斜率为3的辅助线
+% plot(k, k.^-4, 'g--', 'LineWidth', 1.5); % 斜率为4的辅助线
+% plot(k, k.^-5, 'm--', 'LineWidth', 1.5); % 斜率为5的辅助线
+% plot(k, k.^-2.5, 'c--', 'LineWidth', 1.5); % 斜率为2.5的辅助线
+% plot(k, k.^-3.5, 'k--', 'LineWidth', 1.5); % 斜率为3.5的辅助线
+% 
+% % 设置图形属性
+% xlabel('log(\sqrt{N})');
+% ylabel('log(Error)');
+% legend('E1', 'E2', 'E3', 'E4', 'E5', 'E6', 'Location', 'SouthWest');
+% grid on;
+% title('Error Convergence Rates');
+% axis tight;
+
+%%Plot plus
+% figure(12);
+% %%%%%%%%%%%%%%%%%
+% loglog(N, l2err, 'bo-','LineWidth',1.5,'MarkerSize',6); 
+% hold on;
+% % %%%%%%%%%%%%%%%%%%
+% loglog(N, h1err, 'ro-','LineWidth',1.5,'MarkerSize',6);  
+% hold on;
+% %%%%%%%%%%%%%%%%%
+% loglog(N, h1rerr, 'b*-','LineWidth',1.5,'MarkerSize',6);  
+% hold on;
+% %%%%%%%%%%%%%%%%%%%%%%
+% loglog(N, h0rerr, 'k*-','LineWidth',1.5,'MarkerSize',6);  
+% 
+% 
+% x1 = 1e3;
+% y1 = 1e-2;
+% 
+% % 延伸倍数 alpha
+% alpha = 2;
+% 
+% % 若想在loglog图上指示“slope = 1”，
+% %     则从(x1,y1)到(x2,y2)应满足：log10(y2)-log10(y1) = -1*( log10(x2)-log10(x1) ).
+% %     由于 x2 = alpha*x1, 所以 y2 = y1 / alpha^(slope).
+% slopeVal = 1;                       % 斜率
+% x2 = x1 * alpha;
+% y2 = y1 / (alpha^slopeVal);
+% 
+% 
+% plot([x1, x2],[y1, y1],'k-','LineWidth',1.2);    % 底边
+% plot([x2, x2],[y1, y2],'k-','LineWidth',1.2);    % 竖边
+% 
+% 
+% plot([x1, x2],[y1, y2],'k-','LineWidth',1.2);    % 斜边(可选)
+% 
+% % 在三角形旁边写文字
+% text(1.4*x1, 0.55*y1, '-1', 'FontSize',10, 'Color','k');  
+% 
+% 
+% % 只要更改 slopeVal = 0.5 即可：
+% slopeVal2 = 0.5;
+% x3 = 650;              % 另一个参考点
+% y3 = 0.6;              % 自己再选一下
+% alpha2 = 2;
+% x4 = x3 * alpha2;
+% y4 = y3 / (alpha2^slopeVal2);
+% 
+% plot([x3, x4],[y3, y3],'k-','LineWidth',1.2); 
+% plot([x4, x4],[y3, y4],'k-','LineWidth',1.2); 
+% plot([x3, x4],[y3, y4],'k-','LineWidth',1.2); 
+% text(1.4*x3,0.6*y3,'-0.5','FontSize',10,'Color','k');
+% 
+% % 调整坐标范围（可选）
+% %xlim([1e1,1e4]);
+% %ylim([1e-3,1]);
+% 
+% 
+% legend('l2err','h1err','h1rerr','h0err');
+% xlabel('Number of Dof');
+% ylabel('Error'); 
+% 
+% %% Create a table for error
+% N = N';
+% l2err = l2err';
+% h1err = h1err';
+% h1rerr = h1rerr';
+% h0rerr = h0rerr';
+% 
+% % 计算order列
+% order_l2err = [NaN; log2(l2err(1:end-1) ./ l2err(2:end))]; 
+% order_h1err = [NaN; log2(h1err(1:end-1) ./ h1err(2:end))]; 
+% order_h1rerr = [NaN; log2(h1rerr(1:end-1) ./ h1rerr(2:end))]; 
+% order_h0rerr = [NaN; log2(h0rerr(1:end-1) ./ h0rerr(2:end))]; 
+% 
+% % 为第一行手动添加NaN，因为没有上一行进行比较
+% % order_l2err = [0; order_l2err];
+% % order_h1err = [0; order_h1err];
+% % order_h1rerr = [0; order_h1rerr];
+% % order_h0rerr = [0; order_h0rerr];
+% 
+% % 将order列加入表格
+% error = table(N, l2err, order_l2err, h1err, order_h1err, h1rerr, order_h1rerr, h0rerr, order_h0rerr);
+% 
+% 
+% % 显示最终的表格
+% % ace_tools.display_dataframe_to_user(name='Error Table with Order', dataframe=error);
+% disp(error)
